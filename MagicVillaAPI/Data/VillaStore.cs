@@ -4,6 +4,8 @@ namespace MagicVillaAPI.Data
 {
     public static class VillaStore
     {
+        //this is the database of this project we just add record here 
+        //we do not use or connect database now
         public static List<VillaDTO> villaList = new List<VillaDTO>
         {
 
