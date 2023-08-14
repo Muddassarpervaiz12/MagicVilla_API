@@ -83,5 +83,61 @@ namespace MagicVillaAPI.Controllers
             //this way is use when create source, you give url where the actual source is created
             return CreatedAtRoute("GetVilla",new {id = villaDTO.Id  },villaDTO);
         }
+
+
+
+
+        //Deleting Villa or source
+        //for this use HttpDelete Method
+        [HttpDelete("id", Name = "DeleteVilla")] //Endpoint
+
+        [ProducesResponseType(StatusCodes.Status404NotFound)]//document the status type 
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+
+        //use only IActionResult then do not need return type
+        //if we use like this then we need ActionResult<VillaDTO>
+        public IActionResult DeleteVilla(int id)
+        {
+            //if id is 0 return bad request
+            if (id == 0)
+            {
+                return BadRequest();
+            }
+            //load villa list by id
+            var villa= VillaStore.villaList.FirstOrDefault(u=>u.Id == id);
+            //if null not found error
+            if (villa == null)
+            {
+                return NotFound();
+            }
+            VillaStore.villaList.Remove(villa);
+            return NoContent();
+        }
+
+
+        //Put is use for update the record
+        [HttpPut("id", Name = "UpdateVilla")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult UpdateVilla(int id, [FromBody]VillaDTO villaDTO)
+        {
+            //why we want to explicity get id if we have villaDTO object in parameters
+            //Answer is we want to double check 
+            // first make sure details is not null that is in villaDTO object
+            //second we check id that pass in parameter is not equal to villaDTO.id
+            if (villaDTO == null || id != villaDTO.Id) 
+            { 
+                //becuae in both case we do not have getting information
+                return BadRequest();
+            }
+            var villa = VillaStore.villaList.FirstOrDefault(u=>u.Id==id);
+            villa.Name= villaDTO.Name;
+            villa.occupancy = villaDTO.occupancy;
+            villa.sqft = villaDTO.sqft;
+            return NoContent();
+        }
+
+
     }
 }
