@@ -1,7 +1,9 @@
 ﻿using MagicVillaAPI.Data;
+using MagicVillaAPI.Logging;
 using MagicVillaAPI.Model;
 using MagicVillaAPI.Model.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MagicVillaAPI.Controllers
@@ -12,6 +14,17 @@ namespace MagicVillaAPI.Controllers
     [ApiController]
     public class VillaAPIController : ControllerBase
     {
+        private readonly ILogger<VillaAPIController> _logger;
+
+        ////use when custom logger implement 
+        //private readonly ILogging _logger;
+
+        public VillaAPIController(ILogger<VillaAPIController> logger 
+            /*use where custom logger implement   ILogging logger*/)
+        {
+                _logger = logger;
+        }
+
         //return list of villa
         //end point on method level not on controller level
         //so IEnumeable<VillaDTO> is get end point  
@@ -19,14 +32,18 @@ namespace MagicVillaAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]//document the status type 
         public ActionResult<IEnumerable<VillaDTO>> GetVillas()
         {
+            //put information through logger
+            //use if we have build in logger 
+            _logger.LogInformation("Getting all Villas...");
+
+            ////use if we custom add logger code
+            //_logger.Log("Getting all villas", "info");
+
             return Ok(VillaStore.villaList);
         }
 
         // return villa based on id
-        //tell explicitly id is integer
-        //[HttpGet("{id:int}")]
-
-        [HttpGet("id", Name ="GetVilla")] //Endpoint
+        [HttpGet("{id:int}", Name ="GetVilla")] //Endpoint
 
         //[ProducesResponseType(200, Type=typeof(VillaDTO))]    we use this if we want to write method like this
         //ActionResult GetVilla(int id)
@@ -39,6 +56,13 @@ namespace MagicVillaAPI.Controllers
         {
             if(id==0)
             {
+                //put information through logger
+                //use if we have build in logger
+                _logger.LogError("Get villa Error with ID:" + id);
+
+                ////use this if we have custom logger
+                //_logger.Log("Get villa Error with ID:" + id, "error");
+
                 return BadRequest();
             }
             var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
@@ -89,7 +113,7 @@ namespace MagicVillaAPI.Controllers
 
         //Deleting Villa or source
         //for this use HttpDelete Method
-        [HttpDelete("id", Name = "DeleteVilla")] //Endpoint
+        [HttpDelete("{id:int}", Name = "DeleteVilla")] //Endpoint
 
         [ProducesResponseType(StatusCodes.Status404NotFound)]//document the status type 
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -116,8 +140,8 @@ namespace MagicVillaAPI.Controllers
         }
 
 
-        //Put is use for update the record
-        [HttpPut("id", Name = "UpdateVilla")]
+        //Put is use for whole object update 
+        [HttpPut("{id:int}", Name = "UpdateVilla")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public IActionResult UpdateVilla(int id, [FromBody]VillaDTO villaDTO)
@@ -139,5 +163,31 @@ namespace MagicVillaAPI.Controllers
         }
 
 
+
+        //Patch is use for one field or attribute update
+        [HttpPatch("{id:int}", Name = "UpdatePartialVilla")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult UpdatePartialVilla(int id, JsonPatchDocument<VillaDTO> patchDTO)
+        { 
+            if (patchDTO == null || id == 0)
+            {
+                return BadRequest();
+            }
+            var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
+            if (villa == null)
+            {
+                return BadRequest();
+            }
+            // if we find villa details, then our json patch document will have needs to be updated.
+
+            // we want to apply that on our villa object and if any error we want to stored in the model state
+            patchDTO.ApplyTo(villa, ModelState);
+            if(! ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            return NoContent();
+        }
     }
 }
