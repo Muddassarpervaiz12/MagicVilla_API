@@ -1,10 +1,17 @@
+using MagicVillaAPI.Data;
 using MagicVillaAPI.Logging;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);       
 
 // Add services to the container.
 
+builder.Services.AddDbContext<ApplicationDbContext>(Options =>
+{
+    Options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultSQLConnection"));
+});
 
 //// create a logger, minimum level is debug and we write log into file also give path of file and rolling interval
 ////is every day means when new file should be created and at last create logger

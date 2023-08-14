@@ -5,6 +5,7 @@ using MagicVillaAPI.Model.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MagicVillaAPI.Controllers
 {
@@ -14,15 +15,17 @@ namespace MagicVillaAPI.Controllers
     [ApiController]
     public class VillaAPIController : ControllerBase
     {
+        private readonly ApplicationDbContext _db;
         private readonly ILogger<VillaAPIController> _logger;
 
         ////use when custom logger implement 
         //private readonly ILogging _logger;
 
-        public VillaAPIController(ILogger<VillaAPIController> logger 
-            /*use where custom logger implement   ILogging logger*/)
+        public VillaAPIController(ILogger<VillaAPIController> logger, ApplicationDbContext db
+        /*use where custom logger implement   ILogging logger*/)
         {
-                _logger = logger;
+            _logger = logger;
+            _db = db;
         }
 
         //return list of villa
@@ -39,7 +42,7 @@ namespace MagicVillaAPI.Controllers
             ////use if we custom add logger code
             //_logger.Log("Getting all villas", "info");
 
-            return Ok(VillaStore.villaList);
+            return Ok(_db.Villas.ToList());
         }
 
         // return villa based on id
@@ -65,7 +68,7 @@ namespace MagicVillaAPI.Controllers
 
                 return BadRequest();
             }
-            var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
+            var villa = _db.Villas.FirstOrDefault(u => u.Id == id);
             if(villa == null)
             {
                 return NotFound();
@@ -83,7 +86,7 @@ namespace MagicVillaAPI.Controllers
         public ActionResult<VillaDTO> CreateVilla([FromBody] VillaDTO villaDTO)
         {
             //chech villa name, when create villa its does not exist already and create unique name
-            if(VillaStore.villaList.FirstOrDefault(u=>u.Name.ToLower()  == villaDTO.Name.ToLower()) != null)
+            if(_db.Villas.FirstOrDefault(u=>u.Name.ToLower()  == villaDTO.Name.ToLower()) != null)
             {
                 //in bracket key, value pair
                 ModelState.AddModelError("CustomError", "Villa Name already Exists....");
@@ -98,12 +101,21 @@ namespace MagicVillaAPI.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-            //So we retrive maximum id here and increment that by one.
-            villaDTO.Id = VillaStore.villaList.OrderByDescending(u => u.Id).FirstOrDefault().Id + 1;
-
+            // store vill dto into model and then pass that model into the database..
+            Villa model = new Villa
+            {
+                Id = villaDTO.Id,
+                Name = villaDTO.Name,
+                Details = villaDTO.Details,
+                Occupancy = villaDTO.Occupancy,
+                Rate = villaDTO.Rate,
+                Sqft = villaDTO.Sqft,
+                Amenity = villaDTO.Amenity,
+                ImageUrl = villaDTO.ImageUrl,
+            };
             //store villaDTO into the villaList
-            VillaStore.villaList.Add(villaDTO);
-
+            _db.Villas.Add(model);
+            _db.SaveChanges();
             //this way is use when create source, you give url where the actual source is created
             return CreatedAtRoute("GetVilla",new {id = villaDTO.Id  },villaDTO);
         }
@@ -129,13 +141,14 @@ namespace MagicVillaAPI.Controllers
                 return BadRequest();
             }
             //load villa list by id
-            var villa= VillaStore.villaList.FirstOrDefault(u=>u.Id == id);
+            var villa= _db.Villas.FirstOrDefault(u=>u.Id == id);
             //if null not found error
             if (villa == null)
             {
                 return NotFound();
             }
-            VillaStore.villaList.Remove(villa);
+            _db.Villas.Remove(villa);
+            _db.SaveChanges();
             return NoContent();
         }
 
@@ -155,10 +168,27 @@ namespace MagicVillaAPI.Controllers
                 //becuae in both case we do not have getting information
                 return BadRequest();
             }
-            var villa = VillaStore.villaList.FirstOrDefault(u=>u.Id==id);
-            villa.Name= villaDTO.Name;
-            villa.occupancy = villaDTO.occupancy;
-            villa.sqft = villaDTO.sqft;
+
+            //use when we not work on database
+            //var villa = villaStore.villaList.FirstOrDefault(u=>u.Id==id);
+            //villa.Name= villaDTO.Name;
+            //villa.Occupancy = villaDTO.Occupancy;
+            //villa.Sqft = villaDTO.Sqft;
+
+
+            Villa model = new Villa
+            {
+                Id = villaDTO.Id,
+                Name = villaDTO.Name,
+                Details = villaDTO.Details,
+                Occupancy = villaDTO.Occupancy,
+                Rate = villaDTO.Rate,
+                Sqft = villaDTO.Sqft,
+                Amenity = villaDTO.Amenity,
+                ImageUrl = villaDTO.ImageUrl,
+            };
+            _db.Villas.Update(model);
+            _db.SaveChanges();
             return NoContent();
         }
 
@@ -174,15 +204,47 @@ namespace MagicVillaAPI.Controllers
             {
                 return BadRequest();
             }
-            var villa = VillaStore.villaList.FirstOrDefault(u => u.Id == id);
+            //when you retreive this record i do not want you to track that
+            var villa = _db.Villas.AsNoTracking().FirstOrDefault(u => u.Id == id);
+
+
+            //so we have villa but we only change one field so we convert villa to villaDTO
+           VillaDTO villaDTO = new ()
+            {
+                Id = villa.Id,
+                Name = villa.Name,
+                Details = villa.Details,
+                Occupancy = villa.Occupancy,
+                Rate = villa.Rate,
+                Sqft = villa.Sqft,
+                Amenity = villa.Amenity,
+                ImageUrl = villa.ImageUrl,
+            };
             if (villa == null)
             {
                 return BadRequest();
             }
             // if we find villa details, then our json patch document will have needs to be updated.
+           // we want to apply that on our villa object and if any error we want to stored in the model state
+            patchDTO.ApplyTo(villaDTO, ModelState); 
 
-            // we want to apply that on our villa object and if any error we want to stored in the model state
-            patchDTO.ApplyTo(villa, ModelState);
+            //so after apply change now again villadto convert into villa
+            Villa model = new Villa()
+            {
+                Id = villaDTO.Id,
+                Name = villaDTO.Name,
+                Details = villaDTO.Details,
+                Occupancy = villaDTO.Occupancy,
+                Rate = villaDTO.Rate,
+                Sqft = villaDTO.Sqft,
+                Amenity = villaDTO.Amenity,
+                ImageUrl = villaDTO.ImageUrl,
+            };
+
+            //if we do not put AsNoTracking() at above line then entityframe work track both villa that take from database
+            //and new villa that is change just above
+            _db.Villas.Update(model);
+            _db.SaveChanges();
             if(! ModelState.IsValid)
             {
                 return BadRequest(ModelState);

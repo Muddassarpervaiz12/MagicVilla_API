@@ -1,17 +1,19 @@
-﻿using MagicVillaAPI.Model.Dto;
+﻿//If we do not have any data base and need dummy data for test then we use this class
 
-namespace MagicVillaAPI.Data
-{
-    public static class VillaStore
-    {
-        //this is the database of this project we just add record here 
-        //we do not use or connect database now
-        public static List<VillaDTO> villaList = new List<VillaDTO>
-        {
+//using MagicVillaAPI.Model.Dto;
 
-            new VillaDTO { Id = 1, Name = "Pool View", occupancy=3, sqft=300},
-            new VillaDTO { Id = 2, Name = "Beach View", occupancy=5, sqft=600}
+//namespace MagicVillaAPI.Data
+//{
+//    public static class VillaStore
+//    {
+//        //this is the database of this project we just add record here 
+//        //we do not use or connect database now
+//        public static List<VillaDTO> villaList = new List<VillaDTO>
+//        {
 
-        };
-     }
-}
+//            new VillaDTO { Id = 1, Name = "Pool View", Occupancy=3, Sqft=300},
+//            new VillaDTO { Id = 2, Name = "Beach View", Occupancy=5, Sqft=600}
+
+//        };
+//     }
+//}
